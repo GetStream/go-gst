@@ -139,6 +139,37 @@ func (s *Structure) GetValue(key string) (interface{}, error) {
 	return glib.ValueFromNative(unsafe.Pointer(gVal)).GoValue()
 }
 
+
+// GetArrayValueFloat retrieves the values at key.
+func (s *Structure) GetArrayValueFloat(key string) ([]float64, error) {
+	cKey := C.CString(key)
+	defer C.free(unsafe.Pointer(cKey))
+	gVal := C.gst_structure_get_value(s.Instance(), cKey)
+	if gVal == nil {
+		return nil, fmt.Errorf("No value exists at %s", key)
+	}
+	return gValueArrayToGoFloat64Slice(gVal), nil
+}
+
+func gValueArrayToGoFloat64Slice(gVal *C.GValue) []float64 {
+	if gVal == nil {
+		return nil
+	}
+
+	rms_arr := (*C.GValueArray)(C.g_value_get_boxed(gVal))
+	if rms_arr == nil {
+		return nil
+	}
+
+	length := int(rms_arr.n_values)
+	goSlice := make([]float64, length)
+	for i := 0; i < length; i++ {
+		elem := C.g_value_array_get_nth(rms_arr, C.guint(i))
+		goSlice[i] = float64(C.g_value_get_double(elem))
+	}
+	return goSlice
+}
+
 // RemoveValue removes the value at the given key. If the key does not exist,
 // the structure is unchanged.
 func (s *Structure) RemoveValue(key string) {
